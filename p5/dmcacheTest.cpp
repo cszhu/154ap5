@@ -50,7 +50,7 @@ void createOps(int RAMSize, int lineSize, ofstream &outf, int numOps,
       outf <<  " 00 " << setw(2) << (unsigned) memory[address] << endl;
   }  // for each op
 } // createDirect()
-
+    
 
 int main(int argc, char** argv)
 {
