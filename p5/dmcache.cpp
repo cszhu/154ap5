@@ -5,6 +5,12 @@
 #include <iomanip>
 using namespace std;
 
+struct cacheLine {
+	int dirtyBit;
+	char tag;
+	char data[8];
+};
+
 int main(int argc, char** argv)
 {
 	if (argc < 2)
