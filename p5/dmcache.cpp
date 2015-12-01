@@ -7,8 +7,8 @@ using namespace std;
 
 struct cacheLine {
 	int dirtyBit;
-	char tag;
-	char data[8];
+	int tag;
+	unsigned char data[8];
 };
 
 int main(int argc, char** argv)
@@ -20,13 +20,13 @@ int main(int argc, char** argv)
 		cache[i].dirtyBit = 0;
 		cache[i].tag = 0;
 		for (int j = 0; j < 8; j++) {
-			cache[i].data[j] = 0;
+			cache[i].data[j] = 00;
 		}
 	}
 
 	if (argc < 2)
 	{
-		cout << "PLZ ENTER A FILE!!" << endl;
+		cout << "Please enter a file." << endl;
 		return -1;
 	}
 	
@@ -47,12 +47,37 @@ int main(int argc, char** argv)
 		address = strtol(_address.c_str(), NULL, 16);
 		op = strtol(_op.c_str(), NULL, 16);
 		data = strtol(_data.c_str(), NULL, 16);
-		cout << hex << address << " " << +op << " " << +data << endl;
-		
+		// cout << "address: " << +address << " op: " << +op << " data:" << +data << endl;
+
 		int tag = (address >> 9) & 0x7F;
 		int line = (address >> 3) & 0x3F;
 		int offset = address & 0x7;
-		cout << hex << tag << " " << line << " " << offset << endl;
+		// cout << "tag: " << tag << " line: " << line << " offset: " << offset << endl;
+
+		//WRITE
+		if (op == 255) {
+			cout << "Previously cache at line " << line << " @ offset " << offset << " contains " << +cache[line].data[offset];
+			cache[line].data[offset] = data;
+			cache[line].tag = tag;
+			cout << ", now has " << +cache[line].data[offset] << endl;
+		}
+
+		//READ 
+		else if (op == 0) {
+			//[HEX] [DATA] [HIT/MISS] [DIRTYBIT]
+			cout << "Querying cache line " << +line << ": ";
+			cout << hex << address << " ";
+			for (int i = 0; i < 8; i++) {
+				cout << +cache[line].data[i] << " ";
+			}
+			if (cache[line].tag == tag) {
+				cout << " 1 ";
+			} 
+			else { 
+				cout << " 0 "; 
+			}
+			cout << cache[line].dirtyBit << endl;
+		}
 	}
 }
 
