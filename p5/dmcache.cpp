@@ -13,6 +13,17 @@ struct cacheLine {
 
 int main(int argc, char** argv)
 {
+	cacheLine *cache = new cacheLine[64];
+
+	// Initializing cache to 0.
+	for (int i = 0; i < 64; i++) {
+		cache[i].dirtyBit = 0;
+		cache[i].tag = 0;
+		for (int j = 0; j < 8; j++) {
+			cache[i].data[j] = 0;
+		}
+	}
+
 	if (argc < 2)
 	{
 		cout << "PLZ ENTER A FILE!!" << endl;
