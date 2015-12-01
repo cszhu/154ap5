@@ -27,11 +27,21 @@ int main(int argc, char** argv)
 		return -1;
 	}
 		
-	string address, op, data;
+	string _address, _op, _data;
+	short address;
+	unsigned char op, data;
 	while (!file.eof())
 	{
-		file >> address >> op >> data;
-		cout << address << " " << op << " " << data << endl;
+		file >> _address >> _op >> _data;
+		address = strtol(_address.c_str(), NULL, 16);
+		op = strtol(_op.c_str(), NULL, 16);
+		data = strtol(_data.c_str(), NULL, 16);
+		cout << hex << address << " " << +op << " " << +data << endl;
+		
+		int tag = (address >> 9) & 0x7F;
+		int line = (address >> 3) & 0x3F;
+		int offset = address & 0x7;
+		cout << hex << tag << " " << line << " " << offset << endl;
 	}
 }
 
