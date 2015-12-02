@@ -16,7 +16,7 @@ struct cacheLine {
  * ex. concat(23, 43) -> 2343
  */
 int concat(int x, int y) {
-    int pow = 1;
+    int pow = 10;
     while(y >= pow) {
     	pow *= 10;
     }
@@ -95,7 +95,9 @@ int main(int argc, char** argv)
 			
 				// Replace current cache line data with the correct data we want from RAM.
 				int pullAddress = concat(line, tag);
+				cout << "Line is " << line << " and tag is " << tag << " and concat is " << pullAddress << endl;
 				pullAddress = concat(pullAddress, 0); // Set offset to 0.
+
 				for (int i = 0; i < 8; i++) {
 					cache[line].data[i] = RAM[pullAddress + i];
 				}
