@@ -16,29 +16,20 @@ struct cacheLine {
  * ex. concat(23, 43) -> 2343
  */
 int concat(int x, int y) {
-    int pow = 10;
+    int pow = 1;
     while(y >= pow) {
     	pow *= 10;
     }
     return x * pow + y;        
 }
 
-/*
- * Prints the data held in the cache line.
- */
-void printCacheLine(int line, cacheLine* cache) {
-	for (int i = 7; i > -1; i--) {
-		unsigned char output;
-		output = toupper(cache[line].data[i]);
-		cout.fill('0');
-		cout << setw(2) << uppercase << +output;
-	}
-}
-
 int main(int argc, char** argv)
 {
 	cacheLine *cache = new cacheLine[64];
 	unsigned char RAM[65536];
+
+	ofstream outputFile;
+	outputFile.open("dm-out.txt");
 
 	// Initializing cache to 0.
 	for (int i = 0; i < 64; i++) {
@@ -97,6 +88,7 @@ int main(int argc, char** argv)
 				// cout << "Cache tag is " << cache[line].tag << " but we want " << tag << endl;
 				int storeAddress = concat(line, cache[line].tag);
 				storeAddress = concat(storeAddress, 0); // Set offset to 0.
+
 				for (int i = 0; i < 8; i++) {
 					RAM[storeAddress + i] = cache[line].data[i];
 				}
@@ -134,7 +126,7 @@ int main(int argc, char** argv)
 		 * Pulls data from RAM into cache if tag is mismatched.
 		 */
 			else if (op == 0) {
-			cout << uppercase << hex << address << " ";
+			outputFile << uppercase << hex << address << " ";
 
 			if (cache[line].tag != tag) {
 				// First, store current cache line data into RAM.
@@ -155,17 +147,27 @@ int main(int argc, char** argv)
 				cache[line].tag = tag;
 
 				// Print.
-				printCacheLine(line, cache);
-				cout << " 0 ";
-				cout << cache[line].dirtyBit << endl;
+				for (int i = 7; i > -1; i--) {
+					unsigned char output;
+					output = toupper(cache[line].data[i]);
+					outputFile.fill('0');
+					outputFile << setw(2) << uppercase << +output;
+				}
+
+				outputFile << " 0 " << cache[line].dirtyBit << endl;
 
 				// Update dirty bit.
 				cache[line].dirtyBit = 0;
 			} 
 			else { 
-				printCacheLine(line, cache);
-				cout << " 1 ";
-				cout << cache[line].dirtyBit << endl;
+				// Print.
+				for (int i = 7; i > -1; i--) {
+					unsigned char output;
+					output = toupper(cache[line].data[i]);
+					outputFile.fill('0');
+					outputFile << setw(2) << uppercase << +output;
+				}
+				outputFile << " 1 " << cache[line].dirtyBit << endl;
 			}
 		}
 
