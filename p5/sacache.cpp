@@ -5,11 +5,15 @@
 #include <iomanip>
 using namespace std;
 
+struct set {
+	unsigned char data[4];
+};
+
 struct cacheLine
 {
 	int dirtyBit;
 	int tag;
-	unsigned char data[8];
+	set sets[2];
 };
 
 /*
@@ -21,9 +25,11 @@ void initializeCache(cacheLine* cache)
 	{
 		cache[i].dirtyBit = 0;
 		cache[i].tag = 0;
-		for (int j = 0; j < 8; j++)
+		for (int j = 0; j < 2; j++)
 		{
-			cache[i].data[j] = 0;
+			for (int k = 0; k < 4; k++) {
+				cache[i].set[j].data[k] = 0;
+			}
 		}
 	}
 }
