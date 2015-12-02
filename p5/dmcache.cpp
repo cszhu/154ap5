@@ -17,8 +17,9 @@ struct cacheLine {
  */
 int concat(int x, int y) {
     int pow = 10;
-    while(y >= pow)
-        pow *= 10;
+    while(y >= pow) {
+    	pow *= 10;
+    }
     return x * pow + y;        
 }
 
@@ -29,7 +30,8 @@ void printCacheLine(int line, cacheLine* cache) {
 	for (int i = 7; i > -1; i--) {
 		unsigned char output;
 		output = toupper(cache[line].data[i]);
-		printf("%02x", output);
+		cout.fill("0");
+		cout << setw(2) << uppercase << output;
 	}
 }
 
