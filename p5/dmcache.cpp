@@ -30,8 +30,8 @@ void printCacheLine(int line, cacheLine* cache) {
 	for (int i = 7; i > -1; i--) {
 		unsigned char output;
 		output = toupper(cache[line].data[i]);
-		cout.fill("0");
-		cout << setw(2) << uppercase << output;
+		cout.fill('0');
+		cout << setw(2) << uppercase << +output;
 	}
 }
 
@@ -134,7 +134,7 @@ int main(int argc, char** argv)
 		 * Pulls data from RAM into cache if tag is mismatched.
 		 */
 			else if (op == 0) {
-			cout << hex << address << " ";
+			cout << uppercase << hex << address << " ";
 
 			if (cache[line].tag != tag) {
 				// First, store current cache line data into RAM.
