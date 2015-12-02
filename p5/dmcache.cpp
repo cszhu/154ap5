@@ -142,11 +142,9 @@ int main(int argc, char** argv)
 		else if (op == 0)
 		{
 			outputFile << uppercase << hex << address << " ";
-			int hit = 1;
-			if (cache[line].tag != tag)
+			int hit = cache[line].tag == tag;
+			if (!hit)
 			{
-				hit = 0;
-				
 				// First, store current cache line data into RAM.
 				int storeAddress = (cache[line].tag << 9) | (line << 3);
 				for (int i = 0; i < 8; i++)
@@ -161,23 +159,17 @@ int main(int argc, char** argv)
 				}
 				// Update tag.
 				cache[line].tag = tag;
-				// Print.
-				for (int i = 7; i >= 0; i--)
-				{
-					outputFile << setfill('0') << setw(2) << uppercase << +cache[line].data[i];
-				}
-				outputFile << " 0 " << cache[line].dirtyBit << endl;
+			}
+			// Print.
+			for (int i = 7; i >= 0; i--)
+			{
+				outputFile << setfill('0') << setw(2) << uppercase << +cache[line].data[i];
+			}
+			outputFile << " " << hit << " " << cache[line].dirtyBit << endl;
+			if (!hit)
+			{
 				// Update dirty bit.
 				cache[line].dirtyBit = 0;
-			}
-			else
-			{
-				// Print.
-				for (int i = 7; i >= 0; i--)
-				{
-					outputFile << setfill('0') << setw(2) << uppercase << +cache[line].data[i];
-				}
-				outputFile << " 1 " << cache[line].dirtyBit << endl;
 			}
 		}
 	}
