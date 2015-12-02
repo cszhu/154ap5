@@ -11,9 +11,32 @@ struct cacheLine {
 	unsigned char data[8];
 };
 
+/*
+ * Concatenates y to x and returns it.
+ * ex. concat(23, 43) -> 2343
+ */
+int concat(int x, int y) {
+    int pow = 10;
+    while(y >= pow)
+        pow *= 10;
+    return x * pow + y;        
+}
+
+/*
+ * Prints the data held in the cache line.
+ */
+void printCacheLine(int line, cacheLine* cache) {
+	for (int i = 7; i > -1; i--) {
+		unsigned char output;
+		output = toupper(cache[line].data[i]);
+		printf("%02x", output);
+	}
+}
+
 int main(int argc, char** argv)
 {
 	cacheLine *cache = new cacheLine[64];
+	unsigned char RAM[65536];
 
 	// Initializing cache to 0.
 	for (int i = 0; i < 64; i++) {
@@ -54,30 +77,96 @@ int main(int argc, char** argv)
 		int offset = address & 0x7;
 		// cout << "tag: " << tag << " line: " << line << " offset: " << offset << endl;
 
-		//WRITE
+		/* 
+		 * WRITE FUNCTION
+		 *
+		 * Writes to cache. Sets the dirty bit to 1.
+		 * Pulls in correct cacheLine from RAM if tag is mismatched.
+		 */
 		if (op == 255) {
-			cout << "Previously cache at line " << line << " @ offset " << offset << " contains " << +cache[line].data[offset];
-			cache[line].data[offset] = data;
-			cache[line].tag = tag;
-			cout << ", now has " << +cache[line].data[offset] << endl;
+			// First write.
+			if (cache[line].tag == 0) {
+				cache[line].data[offset] = data;
+				cache[line].tag = tag;
+				// cout << "First write to cache " << line << " @ offset " << offset << " now has " << +cache[line].data[offset] << endl << endl;
+			}
+			// Mismatched tags.
+			else if (cache[line].tag != tag) {
+				// cout << "Cache tag is " << cache[line].tag << " but we want " << tag << endl;
+				int storeAddress = concat(line, cache[line].tag);
+				storeAddress = concat(storeAddress, 0); // Set offset to 0.
+				for (int i = 0; i < 8; i++) {
+					RAM[storeAddress + i] = cache[line].data[i];
+				}
+			
+				// Replace current cache line data with the correct data we want from RAM.
+				int pullAddress = concat(line, tag);
+				pullAddress = concat(pullAddress, 0); // Set offset to 0.
+				for (int i = 0; i < 8; i++) {
+					cache[line].data[i] = RAM[pullAddress + i];
+				}
+
+				// Update tag.
+				cache[line].tag = tag;
+
+				// Now we have the correct cache line, so we write our data to it.
+				cache[line].data[offset] = data;
+
+				// cout << "Cache at line " << line << " tag " << tag << " @ offset " << offset << " now contains " << +cache[line].data[offset] << endl << endl;;
+			}
+			// Tag matches. Correct cache line.
+			else {
+				// cout << "Correct tag - line " << line << " @ offset " << offset << " now has " << +cache[line].data[offset] << endl << endl;
+				cache[line].data[offset] = data;
+			}
+
+			// We did a write, so update the dirty bit.
+			cache[line].dirtyBit = 1;
 		}
 
-		//READ 
-		else if (op == 0) {
-			//[HEX] [DATA] [HIT/MISS] [DIRTYBIT]
-			cout << "Querying cache line " << +line << ": ";
+		/* 
+		 * READ FUNCTION
+		 *
+		 * Prints out requested cache line in the form 
+		 * [HEX ADDRESS] [DATA] [HIT/MISS] [DIRTY BIT].
+		 * Pulls data from RAM into cache if tag is mismatched.
+		 */
+			else if (op == 0) {
 			cout << hex << address << " ";
-			for (int i = 0; i < 8; i++) {
-				cout << +cache[line].data[i] << " ";
-			}
-			if (cache[line].tag == tag) {
-				cout << " 1 ";
+
+			if (cache[line].tag != tag) {
+				// First, store current cache line data into RAM.
+				int storeAddress = concat(line, cache[line].tag);
+				storeAddress = concat(storeAddress, 0); // Set offset to 0.
+				for (int i = 0; i < 8; i++) {
+					RAM[storeAddress + i] = cache[line].data[i];
+				}
+
+				// Replace current cache line data with the correct data we want from RAM.
+				int pullAddress = concat(line, tag);
+				pullAddress = concat(pullAddress, 0); // Set offset to 0.
+				for (int i = 0; i < 8; i++) {
+					cache[line].data[i] = RAM[pullAddress + i];
+				}
+
+				// Update tag.
+				cache[line].tag = tag;
+
+				// Print.
+				printCacheLine(line, cache);
+				cout << " 0 ";
+				cout << cache[line].dirtyBit << endl;
+
+				// Update dirty bit.
+				cache[line].dirtyBit = 0;
 			} 
 			else { 
-				cout << " 0 "; 
+				printCacheLine(line, cache);
+				cout << " 1 ";
+				cout << cache[line].dirtyBit << endl;
 			}
-			cout << cache[line].dirtyBit << endl;
 		}
-	}
-}
+
+	} // End of file
+} // End of main
 
