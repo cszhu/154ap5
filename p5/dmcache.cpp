@@ -29,6 +29,9 @@ void initializeCache(cacheLine* cache)
 	}
 }
 
+/*
+ * Prints all non-empty lines of cache for debugging purposes.
+ */
 void printCache(cacheLine* cache)
 {
 	for (int i = 0; i < 64; i++)
@@ -76,19 +79,19 @@ int main(int argc, char** argv)
 		address = strtol(_address.c_str(), NULL, 16);
 		op = strtol(_op.c_str(), NULL, 16);
 		data = strtol(_data.c_str(), NULL, 16);
-		cout << "address: " << hex << + address << " op: " << + op << " data: " << + data << endl;
+		//cout << "address: " << hex << + address << " op: " << + op << " data: " << + data << endl;
 		
 		// Split addres to cache line parts
 		int tag = (address >> 9) & 0x7F;
 		int line = (address >> 3) & 0x3F;
 		int offset = address & 0x7;
-		cout << "tag: " << tag << " line: " << line << " offset: " << offset << endl;
+		//cout << "tag: " << tag << " line: " << line << " offset: " << offset << endl;
 		
 		/*
 		 * WRITE OPERATION
 		 *
 		 * Writes to cache and sets the dirty bit to 1.
-		 * Pulls in correct cacheLine from RAM if tag is mismatched.
+		 * Pulls in correct cacheLine from RAM on tag mismatched.
 		 */
 		if (op == 0xFF)
 		{
@@ -102,18 +105,14 @@ int main(int argc, char** argv)
 			else if (cache[line].tag != tag) // Mismatched tags
 			{
 				// cout << "Cache tag is " << cache[line].tag << " but we want " << tag << endl;
-				//int storeAddress = concat(line, cache[line].tag);
-				//storeAddress = concat(storeAddress, 0); // Set offset to 0.
 				int storeAddress = (cache[line].tag << 9) | (line << 3);
 				for (int i = 0; i < 8; i++)
 				{
 					RAM[storeAddress + i] = cache[line].data[i];
 				}
 				// Replace current cache line data with the correct data we want from RAM.
-				//int pullAddress = concat(line, tag);
 				int pullAddress = (tag << 9) | (line << 3);
-				cout << "Line is " << line << " and tag is " << tag << " and concat is " << pullAddress << endl;
-				//pullAddress = concat(pullAddress, 0); // Set offset to 0.
+				//cout << "Line is " << line << " and tag is " << tag << " and concat is " << pullAddress << endl;
 				for (int i = 0; i < 8; i++)
 				{
 					cache[line].data[i] = RAM[pullAddress + i];
@@ -132,16 +131,13 @@ int main(int argc, char** argv)
 			
 			// We did a write, so update the dirty bit.
 			cache[line].dirtyBit = 1;
-			
-			//printCache(cache);
-			//getch();
 		}
 		/*
 		 * READ OPERATION
 		 *
-		 * Prints out requested cache line in the form
-		 * [HEX ADDRESS] [DATA] [HIT/MISS] [DIRTY BIT].
-		 * Pulls data from RAM into cache if tag is mismatched.
+		 * Prints out requested cache line in the format
+		 * [ADDRESS] [DATA] [HIT] [DIRTY BIT]
+		 * Pulls data from RAM into cache on tag mismatched.
 		 */
 		else if (op == 0)
 		{
