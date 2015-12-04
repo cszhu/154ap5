@@ -69,10 +69,10 @@ int main(int argc, char** argv)
 	string _address, _op, _data;
 	unsigned short address;
 	unsigned char op, data;
-	while (!file.eof())
+
+	// Read line from file
+	while (file >> _address >> _op >> _data;)
 	{
-		// Read line from file
-		file >> _address >> _op >> _data;
 		
 		// Convert string -> integral value
 		address = strtol(_address.c_str(), NULL, 16);
