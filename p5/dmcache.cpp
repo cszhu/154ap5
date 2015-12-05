@@ -73,7 +73,6 @@ int main(int argc, char** argv)
 	// Read line from file
 	while (file >> _address >> _op >> _data;)
 	{
-		
 		// Convert string -> integral value
 		address = strtol(_address.c_str(), NULL, 16);
 		op = strtol(_op.c_str(), NULL, 16);
@@ -81,7 +80,7 @@ int main(int argc, char** argv)
 		//cout << "address: " << hex << + address << " op: " << + op << " data: " << + data << endl;
 		
 		// Split addres to cache line parts
-		int tag = (address >> 9) & 0x7F;
+		int tag = address >> 9;
 		int line = (address >> 3) & 0x3F;
 		int offset = address & 0x7;
 		//cout << "tag: " << tag << " line: " << line << " offset: " << offset << endl;
