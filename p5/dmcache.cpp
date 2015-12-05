@@ -1,9 +1,21 @@
 #include <iostream>
 #include <fstream>
-#include <cstdlib>
-#include <cstring>
 #include <iomanip>
 using namespace std;
+
+struct address
+{
+	unsigned short tag;
+	unsigned char line;
+	unsigned char offset;
+
+	address(unsigned short address)
+	{
+		tag = address >> 9;
+		line = (address >> 3) & 0x3F;	// 7 bit line
+		offset = address & 0x7;			// 3 bit offset
+	}
+};
 
 struct cacheLine
 {
@@ -50,7 +62,7 @@ void printCache(cacheLine* cache)
 int main(int argc, char** argv)
 {
 	cacheLine *cache = new cacheLine[64];
-	unsigned char RAM[65536];
+	unsigned char RAM[65536] = { 0 };
 	ofstream outputFile;
 	outputFile.open("dm-out.txt");
 	initializeCache(cache);
@@ -66,25 +78,15 @@ int main(int argc, char** argv)
 		cout << "Unable to open file." << endl;
 		return -1;
 	}
-	string _address, _op, _data;
-	unsigned short address;
-	unsigned char op, data;
+
+	unsigned short memaddress;
+	unsigned short op, data;
 
 	// Read line from file
-	while (file >> _address >> _op >> _data;)
+	while (file >> hex >> memaddress >> op >> data)
 	{
-		// Convert string -> integral value
-		address = strtol(_address.c_str(), NULL, 16);
-		op = strtol(_op.c_str(), NULL, 16);
-		data = strtol(_data.c_str(), NULL, 16);
-		//cout << "address: " << hex << + address << " op: " << + op << " data: " << + data << endl;
-		
-		// Split addres to cache line parts
-		int tag = address >> 9;
-		int line = (address >> 3) & 0x3F;
-		int offset = address & 0x7;
-		//cout << "tag: " << tag << " line: " << line << " offset: " << offset << endl;
-		
+		address address(memaddress);
+
 		/*
 		 * WRITE OPERATION
 		 *
@@ -93,42 +95,42 @@ int main(int argc, char** argv)
 		 */
 		if (op == 0xFF)
 		{
-			if (cache[line].tag == 0) // First write
+			if (cache[address.line].tag == 0) // First write
 			{
 				// First write
-				cache[line].data[offset] = data;
-				cache[line].tag = tag;
+				cache[address.line].data[address.offset] = data;
+				cache[address.line].tag = address.tag;
 				// cout << "First write to cache " << line << " @ offset " << offset << " now has " << +cache[line].data[offset] << endl << endl;
 			}
-			else if (cache[line].tag != tag) // Mismatched tags
+			else if (cache[address.line].tag != address.tag) // Mismatched tags
 			{
 				// cout << "Cache tag is " << cache[line].tag << " but we want " << tag << endl;
-				int storeAddress = (cache[line].tag << 9) | (line << 3);
+				int storeAddress = (cache[address.line].tag << 9) | (address.line << 3);
 				for (int i = 0; i < 8; i++)
 				{
-					RAM[storeAddress + i] = cache[line].data[i];
+					RAM[storeAddress + i] = cache[address.line].data[i];
 				}
 				// Replace current cache line data with the correct data we want from RAM.
-				int pullAddress = (tag << 9) | (line << 3);
+				int pullAddress = (address.tag << 9) | (address.line << 3);
 				//cout << "Line is " << line << " and tag is " << tag << " and concat is " << pullAddress << endl;
 				for (int i = 0; i < 8; i++)
 				{
-					cache[line].data[i] = RAM[pullAddress + i];
+					cache[address.line].data[i] = RAM[pullAddress + i];
 				}
 				// Update tag
-				cache[line].tag = tag;
+				cache[address.line].tag = address.tag;
 				// Now we have the correct cache line, so we write our data to it.
-				cache[line].data[offset] = data;
+				cache[address.line].data[address.offset] = data;
 				// cout << "Cache at line " << line << " tag " << tag << " @ offset " << offset << " now contains " << +cache[line].data[offset] << endl << endl;;
 			}
 			else // Tag matches; correct cache line
 			{
 				// cout << "Correct tag - line " << line << " @ offset " << offset << " now has " << +cache[line].data[offset] << endl << endl;
-				cache[line].data[offset] = data;
+				cache[address.line].data[address.offset] = data;
 			}
-			
+
 			// We did a write, so update the dirty bit.
-			cache[line].dirtyBit = 1;
+			cache[address.line].dirtyBit = 1;
 		}
 		/*
 		 * READ OPERATION
@@ -139,35 +141,35 @@ int main(int argc, char** argv)
 		 */
 		else if (op == 0)
 		{
-			outputFile << uppercase << hex << address << " ";
-			int hit = cache[line].tag == tag;
+			outputFile << uppercase << hex << setfill('0') << setw(4) << memaddress << " ";
+			int hit = cache[address.line].tag == address.tag;
 			if (!hit)
 			{
 				// First, store current cache line data into RAM.
-				int storeAddress = (cache[line].tag << 9) | (line << 3);
+				int storeAddress = (cache[address.line].tag << 9) | (address.line << 3);
 				for (int i = 0; i < 8; i++)
 				{
-					RAM[storeAddress + i] = cache[line].data[i];
+					RAM[storeAddress + i] = cache[address.line].data[i];
 				}
 				// Replace current cache line data with the correct data we want from RAM.
-				int pullAddress = (tag << 9) | (line << 3);
+				int pullAddress = (address.tag << 9) | (address.line << 3);
 				for (int i = 0; i < 8; i++)
 				{
-					cache[line].data[i] = RAM[pullAddress + i];
+					cache[address.line].data[i] = RAM[pullAddress + i];
 				}
 				// Update tag.
-				cache[line].tag = tag;
+				cache[address.line].tag = address.tag;
 			}
 			// Print.
 			for (int i = 7; i >= 0; i--)
 			{
-				outputFile << setfill('0') << setw(2) << uppercase << +cache[line].data[i];
+				outputFile << setfill('0') << setw(2) << uppercase << +cache[address.line].data[i];
 			}
-			outputFile << " " << hit << " " << cache[line].dirtyBit << endl;
+			outputFile << " " << hit << " " << cache[address.line].dirtyBit << endl;
 			if (!hit)
 			{
 				// Update dirty bit.
-				cache[line].dirtyBit = 0;
+				cache[address.line].dirtyBit = 0;
 			}
 		}
 	}

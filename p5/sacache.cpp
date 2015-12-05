@@ -1,7 +1,6 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
-#include <conio.h>
 using namespace std;
 
 #define RAM_CAPACITY	0x10000
@@ -146,7 +145,7 @@ int main(int argc, char** argv)
 			 */
 			case 0x00:
 			{
-				outputFile << hex << uppercase << setw(4) << memaddress << " ";
+				outputFile << hex << uppercase << setfill('0') << setw(4) << memaddress << " ";
 				char wasDirty = writeLine->dirty;
 
 				// If miss, store line to RAM, then load correct data to cache.
@@ -164,7 +163,7 @@ int main(int argc, char** argv)
 
 				for (int i = BLOCK_SIZE - 1; i >= 0; i--)
 				{
-					outputFile << setfill('0') << setw(2) << +writeLine->data[i];
+					outputFile << setw(2) << +writeLine->data[i];
 				}
 				outputFile << " " << +hit << " " << +wasDirty << endl;
 			}
