@@ -29,7 +29,7 @@ void printRAM(ofstream& output, RAM RAM)
 		{
 			if (i > 0)
 				output << " ";
-			output << hex << setfill('0') << setw(8) << (RAM.pages[i] & 0xFFFFF000);
+			output << hex << setfill('0') << (RAM.pages[i] & 0xFFFFF000);
 		}
 	}
 	output << endl;
