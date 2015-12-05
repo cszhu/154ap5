@@ -1,70 +1,72 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
-#include <cstring>
+#include <string>
 #include <iomanip>
 using namespace std;
 
-struct set {
-	unsigned char data[4];
-};
+#define RAM_CAPACITY	0x10000
+#define CACHE_CAPACITY	512
+#define BLOCK_SIZE		8
+#define NUM_LINES		CACHE_CAPACITY / BLOCK_SIZE
+#define LINES_PER_SET	4
+#define LINE_SIZE		BLOCK_SIZE / LINES_PER_SET
+#define NUM_SETS		NUM_LINES / LINES_PER_SET
 
 struct cacheLine
 {
-	int dirtyBit;
-	int tag;
-	set sets[2];
+	unsigned char dirty;
+	unsigned short tag;
+	unsigned char data[LINE_SIZE];
 };
 
-/*
- * Sets the contents of the cache to 0.
- */
-void initializeCache(cacheLine* cache)
+struct cacheSet
 {
-	for (int i = 0; i < 64; i++)
+	cacheLine lines[LINES_PER_SET];
+};
+
+void initializeCache(cacheSet* cache)
+{
+	for (int i = 0; i < NUM_SETS; i++)
 	{
-		cache[i].dirtyBit = 0;
-		cache[i].tag = 0;
-		for (int j = 0; j < 2; j++)
+		for (int j = 0; j < LINES_PER_SET; j++)
 		{
-			for (int k = 0; k < 4; k++) {
-				cache[i].set[j].data[k] = 0;
+			cache[i].lines[j].dirty = 0;
+			cache[i].lines[j].tag = 0;
+			for (int k = 0; k < LINE_SIZE; k++)
+			{
+				cache[i].lines[j].data[k] = 0;
 			}
 		}
 	}
 }
 
-/*
- * Prints all non-empty lines of cache for debugging purposes.
- */
-void printCache(cacheLine* cache)
+void printCache(cacheSet* cache)
 {
-	for (int i = 0; i < 64; i++)
+	cout << hex;
+	for (int i = 0; i < NUM_SETS; i++)
 	{
-		if (cache[i].tag == 0) continue;
-		cout << "Line " << setfill('0') << setw(2) << i << ": ";
-		cout << +cache[i].dirtyBit << " " << setw(2) << +cache[i].tag << " ";
-		for (int j = 7; j >= 0; j--)
+		for (int j = 0; j < LINES_PER_SET; j++)
 		{
-			cout << setw(2) << +cache[i].data[j];
+			cout << +cache[i].lines[j].dirty << " " << cache[i].lines[j].tag << " ";
+			for (int k = 0; k < LINE_SIZE; k++)
+			{
+				cout << setfill('0') << setw(2) << +cache[i].lines[j].data[k];
+			}
+			cout << " ";
 		}
 		cout << endl;
 	}
-	cout << endl;
 }
 
 int main(int argc, char** argv)
 {
-	cacheLine *cache = new cacheLine[64];
-	unsigned char RAM[65536];
-	ofstream outputFile;
-	outputFile.open("dm-out.txt");
-	initializeCache(cache);
 	if (argc < 2)
 	{
 		cout << "Please enter a file." << endl;
 		return -1;
 	}
+
 	char* filename = argv[1];
 	ifstream file(filename);
 	if (!file)
@@ -72,110 +74,55 @@ int main(int argc, char** argv)
 		cout << "Unable to open file." << endl;
 		return -1;
 	}
-	string _address, _op, _data;
-	unsigned short address;
-	unsigned char op, data;
-	while (!file.eof())
+	
+	ofstream outputFile("sa-out.txt");
+	if (!outputFile)
 	{
-		// Read line from file
-		file >> _address >> _op >> _data;
-		
-		// Convert string -> integral value
-		address = strtol(_address.c_str(), NULL, 16);
-		op = strtol(_op.c_str(), NULL, 16);
-		data = strtol(_data.c_str(), NULL, 16);
-		//cout << "address: " << hex << + address << " op: " << + op << " data: " << + data << endl;
-		
+		cout << "Unable to create output file." << endl;
+		return -1;
+	}
+
+	cacheSet * cache = new cacheSet[NUM_SETS];
+	unsigned char RAM[RAM_CAPACITY];
+
+	initializeCache(cache);
+	printCache(cache);
+
+	unsigned short address;
+	unsigned short op, data;
+	
+	// Read line from file
+	while (file >> hex >> address >> op >> data)
+	{
+		cout << "address: " << hex << uppercase << setfill('0') << setw(4) << address << " op: " << setw(2) << op << " data: " << setw(2) << data << endl;
+
 		// Split addres to cache line parts
 		int tag = (address >> 9) & 0x7F;
 		int line = (address >> 3) & 0x3F;
 		int offset = address & 0x7;
 		//cout << "tag: " << tag << " line: " << line << " offset: " << offset << endl;
-		
-		/*
-		 * WRITE OPERATION
-		 *
-		 * Writes to cache and sets the dirty bit to 1.
-		 * Pulls in correct cacheLine from RAM on tag mismatched.
-		 */
-		if (op == 0xFF)
+
+		switch (op)
 		{
-			if (cache[line].tag == 0) // First write
-			{
-				// First write
-				cache[line].data[offset] = data;
-				cache[line].tag = tag;
-				// cout << "First write to cache " << line << " @ offset " << offset << " now has " << +cache[line].data[offset] << endl << endl;
-			}
-			else if (cache[line].tag != tag) // Mismatched tags
-			{
-				// cout << "Cache tag is " << cache[line].tag << " but we want " << tag << endl;
-				int storeAddress = (cache[line].tag << 9) | (line << 3);
-				for (int i = 0; i < 8; i++)
-				{
-					RAM[storeAddress + i] = cache[line].data[i];
-				}
-				// Replace current cache line data with the correct data we want from RAM.
-				int pullAddress = (tag << 9) | (line << 3);
-				//cout << "Line is " << line << " and tag is " << tag << " and concat is " << pullAddress << endl;
-				for (int i = 0; i < 8; i++)
-				{
-					cache[line].data[i] = RAM[pullAddress + i];
-				}
-				// Update tag
-				cache[line].tag = tag;
-				// Now we have the correct cache line, so we write our data to it.
-				cache[line].data[offset] = data;
-				// cout << "Cache at line " << line << " tag " << tag << " @ offset " << offset << " now contains " << +cache[line].data[offset] << endl << endl;;
-			}
-			else // Tag matches; correct cache line
-			{
-				// cout << "Correct tag - line " << line << " @ offset " << offset << " now has " << +cache[line].data[offset] << endl << endl;
-				cache[line].data[offset] = data;
-			}
-			
-			// We did a write, so update the dirty bit.
-			cache[line].dirtyBit = 1;
-		}
-		/*
-		 * READ OPERATION
-		 *
-		 * Prints out requested cache line in the format
-		 * [ADDRESS] [DATA] [HIT] [DIRTY BIT]
-		 * Pulls data from RAM into cache on tag mismatched.
-		 */
-		else if (op == 0)
-		{
-			outputFile << uppercase << hex << address << " ";
-			int hit = cache[line].tag == tag;
-			if (!hit)
-			{
-				// First, store current cache line data into RAM.
-				int storeAddress = (cache[line].tag << 9) | (line << 3);
-				for (int i = 0; i < 8; i++)
-				{
-					RAM[storeAddress + i] = cache[line].data[i];
-				}
-				// Replace current cache line data with the correct data we want from RAM.
-				int pullAddress = (tag << 9) | (line << 3);
-				for (int i = 0; i < 8; i++)
-				{
-					cache[line].data[i] = RAM[pullAddress + i];
-				}
-				// Update tag.
-				cache[line].tag = tag;
-			}
-			// Print.
-			for (int i = 7; i >= 0; i--)
-			{
-				outputFile << setfill('0') << setw(2) << uppercase << +cache[line].data[i];
-			}
-			outputFile << " " << hit << " " << cache[line].dirtyBit << endl;
-			if (!hit)
-			{
-				// Update dirty bit.
-				cache[line].dirtyBit = 0;
-			}
+			/*
+			 * READ OPERATION
+			 *
+			 * Prints out requested cache line in the format
+			 * [ADDRESS] [DATA] [HIT] [DIRTY BIT]
+			 * Pulls data from RAM into cache on tag mismatched.
+			 */
+			case 0x0:
+
+				break;
+
+				/*
+				 * WRITE OPERATION
+				 *
+				 * Writes to cache and sets the dirty bit to 1.
+				 * Pulls in correct cacheLine from RAM on tag mismatched.
+				 */
+			case 0xFF:
+				break;
 		}
 	}
 }
