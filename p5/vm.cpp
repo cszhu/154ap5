@@ -35,7 +35,7 @@ void printRAM(ofstream& output, RAM RAM)
 	output << endl;
 }
 
-unsigned int getPageIndex(pageTable pageTable[PAGE_TABLE_SIZE], unsigned int address)
+int getPageIndex(pageTable pageTable[PAGE_TABLE_SIZE], unsigned int address)
 {
 	unsigned int pageIndex = -1;
 	unsigned int prefix = address & 0xFFFFF000; // first 12 bits are offset
@@ -123,8 +123,9 @@ int main(int argc, char** argv)
 				if (RAM.r[RAM.pointer])
 				{
 					// clear present bit of old page
-					unsigned int oldPagePrefix = getPageIndex(pageTable, RAM.pages[RAM.pointer]);
-					pageTable[oldPagePrefix].present = 0;
+					int oldPagePrefix = getPageIndex(pageTable, RAM.pages[RAM.pointer]);
+					if (oldPagePrefix != -1)
+						pageTable[oldPagePrefix].present = 0;
 
 					// set present bit of new page and place page in RAM
 					pageTable[pageIndex].present = 1;
